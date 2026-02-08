@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontor Automation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <nav class="bg-blue-600 p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-white text-2xl font-bold">Kontor Automation</h1>
+            <div class="flex space-x-4">
+                <a href="{% url 'dashboard' %}"
+                    class="text-white font-bold hover:text-blue-200 transition">Dashboard</a>
+                <a href="{% url 'cards' %}" class="text-white hover:text-blue-200 transition">My Cards</a>
+                <a href="{% url 'logout' %}"
+                    class="text-white hover:text-blue-200 transition px-3 py-1 border border-white rounded hover:bg-white hover:text-blue-600">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-10 p-4">
+        <div class="flex flex-col md:flex-row gap-8">
+
+            <!-- LEFT SIDE: Order Form -->
+            <div class="w-full md:w-1/3 bg-white rounded-lg shadow-md p-6 h-fit">
+                <h2 class="text-xl font-semibold mb-6 text-gray-700 border-b pb-2">New Top-Up Order</h2>
+                <form method="POST" action="">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="id_phone_number">
+                            Phone Number
+                        </label>
+                        {{ form.phone_number }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="id_operator">
+                            Operator
+                        </label>
+                        {{ form.operator }}
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="id_package_id">
+                            Package ID
+                        </label>
+                        {{ form.package_id }}
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="id_credit_card">
+                            Credit Card
+                        </label>
+                        {{ form.credit_card }}
+                        <div class="mt-1 text-right">
+                            <a href="{% url 'cards' %}" class="text-xs text-blue-600 hover:text-blue-800 underline">Add
+                                new card</a>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <button
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
+                            type="submit">
+                            Create Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RIGHT SIDE: Recent Orders Table -->
+            <div class="w-full md:w-2/3 bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-6 text-gray-700 border-b pb-2">Recent Orders</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th
+                                    class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    ID
+                                </th>
+                                <th
+                                    class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Phone
+                                </th>
+                                <th
+                                    class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Package
+                                </th>
+                                <th
+                                    class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Operator
+                                </th>
+                                <th
+                                    class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th
+                                    class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    Created At
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                    <p class="text-gray-900 whitespace-no-wrap">{{ order.id }}</p>
+                                </td>
+                                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                    <p class="text-gray-900 whitespace-no-wrap">{{ order.phone_number }}</p>
+                                </td>
+                                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                    <p class="text-gray-900 whitespace-no-wrap">{{ order.package_id }}</p>
+                                </td>
+                                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                    <p class="text-gray-900 whitespace-no-wrap">{{ order.operator.name }}</p>
+                                </td>
+                                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                    {% if order.status == 'COMPLETED' %}
+                                    <span
+                                        class="relative inline-block px-3 py-1 font-semibold text-green-900 leading-tight">
+                                        <span aria-hidden="true"
+                                            class="absolute inset-0 bg-green-200 opacity-50 rounded-full"></span>
+                                        <span class="relative">Completed</span>
+                                    </span>
+                                    {% elif order.status == 'PROCESSING' %}
+                                    <span
+                                        class="relative inline-block px-3 py-1 font-semibold text-yellow-900 leading-tight">
+                                        <span aria-hidden="true"
+                                            class="absolute inset-0 bg-yellow-200 opacity-50 rounded-full"></span>
+                                        <span class="relative">Processing</span>
+                                    </span>
+                                    {% elif order.status == 'FAILED' %}
+                                    <span
+                                        class="relative inline-block px-3 py-1 font-semibold text-red-900 leading-tight">
+                                        <span aria-hidden="true"
+                                            class="absolute inset-0 bg-red-200 opacity-50 rounded-full"></span>
+                                        <span class="relative">Failed</span>
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="relative inline-block px-3 py-1 font-semibold text-gray-900 leading-tight">
+                                        <span aria-hidden="true"
+                                            class="absolute inset-0 bg-gray-200 opacity-50 rounded-full"></span>
+                                        <span class="relative">{{ order.get_status_display }}</span>
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                                    <p class="text-gray-900 whitespace-no-wrap">{{ order.created_at|date:"Y-m-d H:i" }}
+                                    </p>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6"
+                                    class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center text-gray-500">
+                                    No orders found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>
