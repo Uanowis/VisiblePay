@@ -1,43 +1,76 @@
-version: '3.8'
+
 
 services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kontor_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     ports:
       - "6379:6379"
 
   web:
     build: .
-    command: uvicorn kontor_automation.web.main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      sh -c "python web_interface/manage.py migrate &&
+             gunicorn web_interface.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     volumes:
       - .:/app
     ports:
       - "8000:8000"
+    depends_on:
+      - db
+      - redis
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite:////app/kontor_automation.db
-    depends_on:
-      - redis
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Ensure Django allows host
+      - ALLOWED_HOSTS=*
+      - PYTHONPATH=/app:/app/web_interface
+      - TZ=Europe/Istanbul
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-kontor_db}
 
   worker:
     build: .
-    command: celery -A kontor_automation.worker.tasks worker --loglevel=info
+    command: celery -A worker.celery_app worker --loglevel=info --concurrency=2
     volumes:
       - .:/app
+    depends_on:
+      - db
+      - redis
+      - web
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite:////app/kontor_automation.db
-    depends_on:
-      - redis
-    # shm_size is important for Chrome/Selenium in Docker
-    shm_size: '2gb' 
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CAPTCH_API_KEY=${CAPTCH_API_KEY}
+      - PYTHONPATH=/app:/app/web_interface
+      - TZ=Europe/Istanbul
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-kontor_db}
 
-  sms_receiver:
+  beat:
     build: .
-    command: uvicorn kontor_automation.sms_receiver.main:app --host 0.0.0.0 --port 8001 --reload
+    command: celery -A worker.celery_app beat --loglevel=info
     volumes:
       - .:/app
-    ports:
-      - "8001:8001"
+    depends_on:
+      - db
+      - redis
+      - web
     environment:
-      - DATABASE_URL=sqlite:////app/kontor_automation.db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=/app:/app/web_interface
+      - TZ=Europe/Istanbul
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-kontor_db}
+
+volumes:
+  postgres_data:
