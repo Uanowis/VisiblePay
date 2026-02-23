@@ -79,5 +79,15 @@ services:
       - TZ=Europe/Istanbul
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-kontor_db}
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    ports:
+      - 4040:4040
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: "http web:8000"
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
