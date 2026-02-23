@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontör Otomasyon Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <nav class="bg-blue-600 p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-white text-2xl font-bold">Kontör Otomasyonu</h1>
+            <div class="flex space-x-4">
+                <a href="{% url 'dashboard' %}" class="text-white font-bold hover:text-blue-200 transition">Panel</a>
+                <a href="{% url 'auto_orders' %}" class="text-white hover:text-blue-200 transition">Otomatik
+                    İşlemler</a>
+                <a href="{% url 'packages' %}" class="text-white hover:text-blue-200 transition">Küpürler</a>
+                <a href="{% url 'cards' %}" class="text-white hover:text-blue-200 transition">Kartlarım</a>
+                <a href="{% url 'tl_load' %}" class="text-white hover:text-blue-200 transition">TL Yükle</a>
+                <a href="{% url 'sms_logs' %}" class="text-white hover:text-blue-200 transition">SMS Logları</a>
+
+                <!-- 2Captcha Bakiye -->
+                <span class="bg-gray-800 text-yellow-400 text-sm font-bold px-3 py-1 rounded cursor-help"
+                    title="2Captcha Tahmini Bakiye (30 dk'da bir güncellenir)">
+                    2Captcha: ${{ captcha_balance|default:" Yükleniyor..." }}
+                </span>
+
+                <a href="{% url 'logout' %}"
+                    class="text-white hover:text-blue-200 transition px-3 py-1 border border-white rounded hover:bg-white hover:text-blue-600">Çıkış
+                    Yap</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-10 p-4">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>
