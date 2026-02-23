@@ -1,0 +1,434 @@
+{% extends 'core/dashboard.html' %}
+<!-- Re-using dashboard structure but overriding content. 
+     Since dashboard.html might not be designed as a base template, 
+     I might need to duplicate some structure or refactor. 
+     Given the file content I saw earlier, dashboard.html has <html> checks. 
+     I will assume for now I should copy the base structure or if I can extend it.
+     Let's look at dashboard.html again to be sure if it wraps everything in blocks. -->
+
+{% block content %}
+<div class="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <h1 class="text-xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-8 flex items-center">
+        <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+            </path>
+        </svg>
+        Toplu Numara İşlemleri
+    </h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- LEFT: Input & Controls -->
+        <div
+            class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-4 sm:p-6 lg:col-span-1 border border-white/20 h-fit md:sticky top-8">
+            <h2 class="text-xl font-bold text-gray-700 mb-4">Numara Listesi</h2>
+
+            <textarea id="bulk-numbers" rows="10"
+                class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 font-mono text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition outline-none resize-none"
+                placeholder="0532xxxxxxx&#10;532xxxxxxx&#10;532xxxxxxx"></textarea>
+            <p class="text-xs text-gray-400 mt-2 text-right">Her satıra bir numara yazınız.</p>
+
+            <!-- TL Yükleme Toggle -->
+            <div class="mt-6 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" id="tl-toggle"
+                        class="form-checkbox h-5 w-5 text-orange-600 rounded focus:ring-orange-500 transition duration-150 ease-in-out">
+                    <span class="text-gray-700 font-medium text-sm">TL Yükleme</span>
+                </label>
+                <p class="text-xs text-gray-400 mt-2 ml-8">İşaretlenirse TL yükleme seçenekleri taranır.</p>
+            </div>
+
+            <button id="start-bulk-btn"
+                class="mt-6 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transform transition hover:-translate-y-0.5 focus:ring-4 focus:ring-blue-300 flex justify-center items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                    </path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                İşlemleri Başlat
+            </button>
+        </div>
+
+        <!-- RIGHT: Live Grid -->
+        <div class="lg:col-span-2">
+            <div id="bulk-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Cards will be injected here dynamically -->
+                <div
+                    class="col-span-full text-center py-20 bg-white/50 rounded-2xl border-2 border-dashed border-gray-300">
+                    <p class="text-gray-400 text-lg">Numaraları girin ve başlata basın.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Templates for dynamic JS injection -->
+<template id="order-card-template">
+    <div class="bg-white rounded-xl shadow-md p-4 border border-gray-100 flex flex-col justify-between h-full transition hover:shadow-lg relative overflow-hidden"
+        data-id="">
+        <!-- Progress Bar (Absolute Top) -->
+        <div class="absolute top-0 left-0 w-full h-1 bg-gray-100">
+            <div class="h-full bg-blue-500 transition-all duration-300 w-0 progress-bar"></div>
+        </div>
+
+        <div class="flex justify-between items-start mb-3 mt-2">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800 phone-display">05XX XXX XX XX</h3>
+                <p class="text-xs text-gray-500 pkg-display mt-1">Paket Bekleniyor...</p>
+            </div>
+            <span
+                class="status-badge px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-bold uppercase tracking-wider">
+                Hazır
+            </span>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-3 mb-4 h-20 overflow-y-auto custom-scrollbar border border-gray-100">
+            <p class="text-xs text-gray-600 font-mono log-display">İşlem sıraya alındı.</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="action-area">
+            <!-- Dynamic Buttons -->
+            <button
+                class="btn-select-pkg hidden w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 rounded-lg text-sm transition">
+                Paket Seç
+            </button>
+            <button
+                class="btn-retry hidden w-full bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2 rounded-lg text-sm transition flex justify-center items-center">
+                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                    </path>
+                </svg>
+                Tekrar Dene
+            </button>
+        </div>
+    </div>
+</template>
+
+<!-- Package Selection Modal (Shared) -->
+<div id="pkg-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden backdrop-blur-sm transition-opacity px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 transform transition-all scale-100">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+            <h3 class="text-xl font-bold text-gray-800">Paket Seçimi</h3>
+            <button id="close-modal" class="text-gray-400 hover:text-gray-600 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <input type="hidden" id="modal-target-id">
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-gray-600 text-xs font-bold mb-2 uppercase">Numara</label>
+                <input type="text" id="modal-phone" readonly
+                    class="w-full bg-gray-100 text-gray-500 rounded-lg p-3 text-sm font-bold">
+            </div>
+
+            <div>
+                <label class="block text-gray-600 text-xs font-bold mb-2 uppercase">Paket</label>
+                <div class="relative">
+                    <select id="modal-package-select"
+                        class="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:bg-white focus:border-blue-500 transition shadow-sm h-12">
+                        <!-- Options injected via JS or copied from global list -->
+                        <option value="">Paket Seçiniz...</option>
+                        {% for pkg in packages %}
+                        <option value="{{ pkg.package_id }}" data-price="{{ pkg.price }}">{{ pkg.name }} ({{ pkg.price
+                            }} TL)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-gray-600 text-xs font-bold mb-2 uppercase">Kart</label>
+                <select id="modal-card-select"
+                    class="block appearance-none w-full bg-white border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:bg-white focus:border-blue-500 transition shadow-sm h-12">
+                    {% for card in cards %}
+                    <option value="{{ card.id }}">{{ card.card_name }} ({{ card.card_number|slice:"-4:" }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button id="modal-confirm-btn"
+            class="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+            Onayla ve Devam Et
+        </button>
+    </div>
+</div>
+
+<script>
+    const CSRF_TOKEN = '{{ csrf_token }}';
+
+    // UI Elements
+    const tlToggle = document.getElementById('tl-toggle');
+    
+    const startBtn = document.getElementById('start-bulk-btn');
+    const textArea = document.getElementById('bulk-numbers');
+    const grid = document.getElementById('bulk-grid');
+    const template = document.getElementById('order-card-template');
+
+    // Modal Elements
+    const modal = document.getElementById('pkg-modal');
+    const closeModal = document.getElementById('close-modal');
+    const modalConfirm = document.getElementById('modal-confirm-btn');
+    const modalPhone = document.getElementById('modal-phone');
+    const modalTargetId = document.getElementById('modal-target-id');
+    const modalPkg = document.getElementById('modal-package-select');
+    const modalCard = document.getElementById('modal-card-select');
+
+    // State
+    // Format: { '0532...-uniqueId': { status: '...', taskId: null, logs: [], phone: '...', ... } }
+    let orders = {};
+    let pollInterval = null;
+
+
+
+    // --- Main Logic: Start ---
+    startBtn.addEventListener('click', () => {
+        const rawText = textArea.value;
+        const lines = rawText.split('\n');
+        const validPhones = lines.map(l => l.replace(/\D/g, '')).filter(l => l.length >= 10);
+
+        if (validPhones.length === 0) {
+            alert("Lütfen geçerli numaralar giriniz.");
+            return;
+        }
+
+        // Global Settings
+        const isTL = tlToggle.checked;
+
+
+        // Reset Grid
+        grid.innerHTML = '';
+        orders = {};
+
+        validPhones.forEach((phone, idx) => {
+            const id = `order-${idx}-${Date.now()}`;
+
+            // Create UI Card
+            const clone = template.content.cloneNode(true);
+            const cardEl = clone.querySelector('div');
+            cardEl.dataset.id = id;
+            cardEl.querySelector('.phone-display').textContent = phone;
+
+            
+
+            // Append to Grid
+            grid.appendChild(clone);
+
+            // Init State
+            orders[id] = {
+                id: id,
+                phone: phone,
+                taskId: null,
+                status: 'QUEUED',
+                isTL: isTL,
+                
+                el: grid.lastElementChild // Use just appended element
+            };
+
+            // Start Transaction immediately (or queue)
+            initOrder(id);
+        });
+
+        // Start Polling
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(pollAllOrders, 2000);
+    });
+
+    function initOrder(id) {
+        const order = orders[id];
+        const ui = document.querySelector(`div[data-id="${id}"]`);
+
+        updateStatus(ui, 'PROCESSING', 'Sistem başlatılıyor...', 'bg-blue-100 text-blue-800');
+
+        fetch('/api/init-transaction/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN },
+            body: `phone_number=${order.phone}&transaction_type=${order.isTL ? 'TL' : 'Package'}`
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    order.taskId = data.task_id;
+                    order.status = 'RUNNING';
+                    updateStatus(ui, 'RUNNING', 'İşlem başladı, bekleniyor...', 'bg-yellow-100 text-yellow-800');
+                } else {
+                    failOrder(id, data.error);
+                }
+            })
+            .catch(err => failOrder(id, "Başlangıç hatası"));
+    }
+
+    function failOrder(id, msg) {
+        const ui = document.querySelector(`div[data-id="${id}"]`);
+        updateStatus(ui, 'FAILED', msg, 'bg-red-100 text-red-800');
+
+        // Show Retry
+        const retryBtn = ui.querySelector('.btn-retry');
+        retryBtn.classList.remove('hidden');
+        retryBtn.onclick = () => {
+            retryBtn.classList.add('hidden');
+            initOrder(id);
+        };
+    }
+
+    function updateStatus(ui, code, text, badgeClass) {
+        const badge = ui.querySelector('.status-badge');
+        const log = ui.querySelector('.log-display');
+        const progress = ui.querySelector('.progress-bar');
+
+        badge.className = `status-badge px-3 py-1 text-xs rounded-full font-bold uppercase tracking-wider ${badgeClass}`;
+        badge.textContent = code === 'RUNNING' ? 'İşleniyor' : (code === 'WAITING' ? 'Seçim Bekliyor' : code);
+
+        log.textContent = text;
+
+        // Simple progress bar logic based on text keywords
+        let w = '0%';
+        if (code === 'RUNNING') w = '30%';
+        if (text.includes('Paketler Taranıyor')) w = '50%';
+        if (code === 'WAITING') w = '75%';
+        if (text.includes('Ödeme')) w = '90%';
+        if (code === 'SUCCESS') w = '100%';
+        progress.style.width = w;
+    }
+
+    function pollAllOrders() {
+        Object.values(orders).forEach(order => {
+            if (!order.taskId || order.status === 'DONE' || order.status === 'FAILED') return;
+
+            fetch(`/api/check-transaction-status/${order.taskId}/`)
+                .then(res => res.json())
+                .then(data => {
+                    const ui = document.querySelector(`div[data-id="${order.id}"]`);
+                    const logs = data.logs || "";
+
+                    // Parse Logs similar to dashboard.js
+                    let msg = logs.split('\n').filter(l => l.trim().length > 0).pop() || "İşleniyor...";
+
+                    // Better status messages
+                    if (logs.includes("CAPTCHA_RETRY_LIMIT_EXCEEDED")) {
+                        failOrder(order.id, "Güvenlik Kodu Hatası (3x)");
+                        order.status = 'FAILED';
+                        return;
+                    }
+                    if (logs.includes("Selecting Package")) msg = "Paket Seçiliyor...";
+                    if (logs.includes("Handling 3D Secure")) msg = "SMS Onayı Bekleniyor...";
+
+                    updateStatus(ui, 'RUNNING', msg, 'bg-blue-100 text-blue-800');
+
+                    // Check Task Status
+                    if (data.status === 'WAITING_SELECTION') {
+                        if (order.status !== 'WAITING') { // Only trigger once
+                            order.status = 'WAITING';
+
+                            // Require Manual Input
+                                updateStatus(ui, 'WAITING', order.isTL ? 'TL tutarı seçimi bekleniyor.' : 'Paket seçimi bekleniyor.', 'bg-yellow-100 text-yellow-800');
+                                const btn = ui.querySelector('.btn-select-pkg');
+                                btn.classList.remove('hidden');
+                                btn.onclick = () => openModal(order.id);
+                        }
+                    } else if (data.status === 'SUCCESS') {
+                        order.status = 'DONE';
+                        updateStatus(ui, 'SUCCESS', 'İşlem Başarılı! ✅', 'bg-green-100 text-green-800');
+                    } else if (data.status === 'FAILED') {
+                        // If logs didn't catch it
+                        if (order.status !== 'FAILED') {
+                            failOrder(order.id, "İşlem Başarısız");
+                            order.status = 'FAILED';
+                        }
+                    }
+                });
+        });
+    }
+
+    function completeOrder(id, pkgId, cardId) {
+        const order = orders[id];
+        // Note: complete_transaction in views.py relies on session or lookup. 
+        // But here we are stateless regarding session for multiple tabs.
+        // Wait, views.py complete_transaction uses `request.session.get('task_id')` ??
+        // CHECK views.py: It likely gets task_id from session! This is a problem for bulk.
+        // Need to update complete_transaction to accept task_id or check if it supports it.
+        // If views.py only supports session task_id, we can't run parallel bulk in SAME session easily.
+        // WORKAROUND: We need to modify views.py to accept task_id in POST body.
+
+        fetch('/api/complete-transaction/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF_TOKEN },
+            body: `task_id=${order.taskId}&package_id=${pkgId}&card_id=${cardId}&phone_number=${order.phone}&bypass_session=true`
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'processing') {
+                    // Good
+                    const ui = document.querySelector(`div[data-id="${id}"]`);
+                    const btn = ui.querySelector('.btn-select-pkg');
+                    btn.classList.add('hidden');
+                    updateStatus(ui, 'RUNNING', 'Ödeme başlatıldı...', 'bg-blue-100 text-blue-800');
+                    order.status = 'RunningPayment';
+                } else {
+                    failOrder(id, data.error || "Ödeme başlatılamadı");
+                }
+            });
+    }
+
+    // --- Modal Logic ---
+    function openModal(id) {
+        modal.classList.remove('hidden');
+        const order = orders[id];
+        modalPhone.value = order.phone;
+        modalTargetId.value = id;
+
+        // Clear existing options and show loading
+        modalPkg.innerHTML = '<option value="">Paketler yükleniyor...</option>';
+
+        // Fetch packages from the transaction status API
+        if (order.taskId) {
+            fetch(`/api/check-transaction-status/${order.taskId}/`)
+                .then(res => res.json())
+                .then(data => {
+                    modalPkg.innerHTML = '<option value="">Paket Seçiniz...</option>';
+                    if (data.packages && data.packages.length > 0) {
+                        data.packages.forEach(pkg => {
+                            const opt = document.createElement('option');
+                            opt.value = pkg.package_id;
+                            opt.dataset.price = pkg.price;
+                            opt.textContent = `${pkg.name} (${pkg.price} TL)`;
+                            modalPkg.appendChild(opt);
+                        });
+                    } else {
+                        modalPkg.innerHTML = '<option value="">Paket bulunamadı</option>';
+                    }
+                })
+                .catch(() => {
+                    modalPkg.innerHTML = '<option value="">Paket yüklenemedi</option>';
+                });
+        }
+    }
+
+    closeModal.onclick = () => modal.classList.add('hidden');
+
+    modalConfirm.onclick = () => {
+        const id = modalTargetId.value;
+        const pkg = modalPkg.value;
+        const card = modalCard.value;
+
+        if (!pkg || !card) {
+            alert("Lütfen paket ve kart seçiniz.");
+            return;
+        }
+
+        modal.classList.add('hidden');
+        completeOrder(id, pkg, card);
+    };
+
+</script>
+{% endblock %}

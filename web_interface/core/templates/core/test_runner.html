@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Runner - Kontor Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <div class="container mx-auto mt-10 p-4">
+        <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">System Test Runner</h1>
+
+        <div class="flex flex-col md:flex-row gap-8">
+
+            <!-- LEFT: Configuration -->
+            <div class="w-full md:w-1/3 bg-white rounded-lg shadow-md p-6 h-fit">
+                <h2 class="text-xl font-semibold mb-6 text-gray-700 border-b pb-2">Test Configuration</h2>
+                <form id="testForm">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
+                        <input type="text" name="phone_number" class="w-full px-4 py-2 border rounded"
+                            placeholder="5XX XXX XX XX" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Package Name</label>
+                        <input type="text" name="package_id" class="w-full px-4 py-2 border rounded"
+                            placeholder="e.g. Oyna İzle Ekstra" required>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Select Card</label>
+                        <select name="card_id" class="w-full px-4 py-2 border rounded" required>
+                            {% for card in cards %}
+                            <option value="{{ card.id }}">{{ card.alias }} ({{ card.card_number|slice:"-4:" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Start Test Run
+                    </button>
+                </form>
+            </div>
+
+            <!-- RIGHT: Logs -->
+            <div class="w-full md:w-2/3 bg-gray-900 text-green-400 font-mono rounded-lg shadow-md p-6 h-96 overflow-y-auto"
+                id="logContainer">
+                <div id="logs">Waiting to start...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let intervalId;
+
+        $('#testForm').on('submit', function (e) {
+            e.preventDefault();
+            $('#logs').html('Initializing Test...');
+
+            $.post("{% url 'start_test' %}", $(this).serialize(), function (data) {
+                if (data.test_run_id) {
+                    startPolling(data.test_run_id);
+                } else {
+                    alert('Failed to start test');
+                }
+            });
+        });
+
+        function startPolling(testRunId) {
+            if (intervalId) clearInterval(intervalId);
+
+            intervalId = setInterval(function () {
+                $.get("/api/test-status/" + testRunId + "/", function (data) {
+                    // Replace newlines with <br> for HTML display
+                    let formattedLogs = data.logs.replace(/\n/g, "<br>");
+                    $('#logs').html(formattedLogs);
+
+                    // Auto scroll to bottom
+                    let logContainer = document.getElementById("logContainer");
+                    logContainer.scrollTop = logContainer.scrollHeight;
+
+                    if (data.status === 'SUCCESS' || data.status === 'FAILED') {
+                        clearInterval(intervalId);
+                        $('#logs').append('<br><strong>Test Finished: ' + data.status + '</strong>');
+                    }
+                });
+            }, 2000);
+        }
+    </script>
+
+</body>
+
+</html>

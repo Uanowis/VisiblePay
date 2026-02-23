@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kart Düzenle - Kontör Otomasyonu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <!-- NAVBAR -->
+    <nav class="bg-blue-600 p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{% url 'dashboard' %}" class="text-white text-2xl font-bold">Kontör Otomasyonu</a>
+            <div class="flex space-x-4">
+                <a href="{% url 'dashboard' %}" class="text-white hover:text-blue-200 transition">Panel</a>
+                <a href="{% url 'cards' %}" class="text-white font-bold hover:text-blue-200 transition">Kartlarım</a>
+                <a href="{% url 'logout' %}"
+                    class="text-white hover:text-blue-200 transition px-3 py-1 border border-white rounded hover:bg-white hover:text-blue-600">Çıkış
+                    Yap</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-10 p-4 max-w-lg">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-6 text-gray-700 border-b pb-2">Kartı Düzenle: {{ card.alias }}</h2>
+            <form method="POST">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <strong class="font-bold">Hata!</strong>
+                    <span class="block sm:inline">Lütfen formu kontrol ediniz.</span>
+                    <div class="mt-2 text-sm">
+                        {{ form.errors }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_alias">Kart Adı (Rumuz)</label>
+                    {{ form.alias }}
+                    {% if form.alias.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.alias.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_holder_name">Kart Sahibi</label>
+                    {{ form.holder_name }}
+                    {% if form.holder_name.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.holder_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_card_number">Kart Numarası</label>
+                    {{ form.card_number }}
+                    {% if form.card_number.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.card_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex space-x-4 mb-4">
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="id_exp_month">Ay</label>
+                        {{ form.exp_month }}
+                        {% if form.exp_month.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.exp_month.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="id_exp_year">Yıl</label>
+                        {{ form.exp_year }}
+                        {% if form.exp_year.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.exp_year.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_cvv">CVV</label>
+                    {{ form.cvv }}
+                    {% if form.cvv.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.cvv.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_balance">Bakiye (₺)</label>
+                    {{ form.balance }}
+                    {% if form.balance.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.balance.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center justify-between mt-6 gap-4">
+                    <a href="{% url 'cards' %}"
+                        class="w-1/2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded text-center transition duration-300">İptal</a>
+                    <button
+                        class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
+                        type="submit">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+
+</html>

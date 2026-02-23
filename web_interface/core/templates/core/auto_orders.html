@@ -1,0 +1,413 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mx-auto mt-4 sm:mt-8 p-3 sm:p-6 max-w-full">
+    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-4 sm:p-8 border border-white/20">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-gray-100 pb-4">
+            <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                <div class="bg-indigo-100 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800">Otomatik İşlemler (API)</h2>
+            </div>
+
+            <!-- Global Controls -->
+            <div
+                class="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 bg-gray-50/80 p-3 rounded-lg border border-gray-200 shadow-sm w-full md:w-auto">
+                <div class="flex items-center space-x-2 w-full md:w-auto">
+                    <span class="text-sm font-semibold text-gray-600">Sistem Durumu:</span>
+                    <button id="systemToggleBtn" onclick="toggleSystem()"
+                        class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 {% if system_settings.is_autonomous_active %}bg-green-500{% else %}bg-gray-300{% endif %}">
+                        <span class="sr-only">Sistemi Aç/Kapat</span>
+                        <span id="systemToggleIndicator" aria-hidden="true"
+                            class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 {% if system_settings.is_autonomous_active %}translate-x-5{% else %}translate-x-0{% endif %}"></span>
+                    </button>
+                    <span id="systemStatusLabel"
+                        class="text-xs font-bold {% if system_settings.is_autonomous_active %}text-green-600{% else %}text-gray-500{% endif %}">
+                        {% if system_settings.is_autonomous_active %}AÇIK{% else %}KAPALI{% endif %}
+                    </span>
+                </div>
+
+                <div class="hidden md:block h-6 border-l border-gray-300"></div>
+
+                <div class="flex items-center space-x-2 w-full md:w-auto">
+                    <span class="text-sm font-semibold text-gray-600">Varsayılan Kart:</span>
+                    <select id="defaultCardSelect" onchange="updateDefaultCard()"
+                        class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 min-w-[150px]">
+                        <option value="">Seçiniz...</option>
+                        {% for card in cards %}
+                        {% if system_settings.default_card.id == card.id %}
+                        <option value="{{ card.id }}" selected>{{ card.alias }} ({{ card.card_number|slice:"-4:" }})
+                        </option>
+                        {% else %}
+                        <option value="{{ card.id }}">{{ card.alias }} ({{ card.card_number|slice:"-4:" }})</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex space-x-2 mt-4 md:mt-0">
+                <a href="?status=WAITING_MANUAL_ACTION"
+                    class="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold py-2 px-4 rounded-lg transition text-sm whitespace-nowrap">Bekleyenleri
+                    Gör</a>
+                <a href="?"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg transition text-sm whitespace-nowrap">Tümünü
+                    Gör</a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-gray-100">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr class="bg-gray-50/50 text-gray-600 uppercase text-xs font-bold tracking-wider">
+                        <th class="px-5 py-4 text-left">Tarih</th>
+                        <th class="px-5 py-4 text-left">Ref ID</th>
+                        <th class="px-5 py-4 text-left">Telefon</th>
+                        <th class="px-5 py-4 text-left">Durum</th>
+                        <th class="px-5 py-4 text-left">Küpür / Tutar</th>
+                        <th class="px-5 py-4 text-left">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for order in orders %}
+                    <tr
+                        class="hover:bg-blue-50/30 transition duration-150 ease-in-out {% if order.status == 'WAITING_MANUAL_ACTION' %}bg-yellow-50{% elif order.status == 'FAILED' %}bg-red-50{% endif %}">
+                        <td class="px-5 py-4 text-sm text-gray-500">
+                            {{ order.created_at|date:"d M Y H:i" }}
+                        </td>
+                        <td class="px-5 py-4 text-sm font-medium text-gray-700">
+                            {{ order.external_ref }}
+                        </td>
+                        <td class="px-5 py-4 text-sm font-medium text-gray-700">
+                            {{ order.phone_number }}
+                        </td>
+                        <td class="px-5 py-4 text-sm">
+                            {% if order.status == 'PENDING' %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Bekliyor</span>
+                            {% elif order.status == 'PROCESSING' %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 animate-pulse">İşleniyor</span>
+                            {% elif order.status == '3DS_WAITING' %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">3DS
+                                Bekliyor</span>
+                            {% elif order.status == 'WAITING_MANUAL_ACTION' %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">Küpür
+                                Tanımsız</span>
+                            {% elif order.status == 'COMPLETED' %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Tamamlandı</span>
+                            {% elif order.status == 'FAILED' %}
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Hata:
+                                {{ order.log_message|truncatechars:30 }}</span>
+                            {% else %}
+                            {{ order.get_status_display }}
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-sm text-gray-600 font-bold">
+                            <!-- Extract API info from raw JSON -->
+                            <script>
+                                try {
+                                    var rawData = '{{ order.raw_api_data|escapejs }}';
+                                    var data = rawData ? JSON.parse(rawData) : {};
+                                    document.write(data.api_kontor || '-');
+                                } catch (e) {
+                                    document.write('-');
+                                }
+                            </script>
+                            {% if order.resolved_package_name %}
+                            <div class="text-xs text-blue-600 font-normal mt-1" title="Gerçek Paket Adı">{{
+                                order.resolved_package_name }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-sm">
+                            {% if order.status == 'WAITING_MANUAL_ACTION' %}
+                            <button type="button"
+                                onclick="document.getElementById('modal-{{ order.id }}').classList.remove('hidden')"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg transition text-xs shadow-md">
+                                Küpür Tanımla
+                            </button>
+                            {% endif %}
+
+                            <button type="button"
+                                onclick="document.getElementById('details-modal-{{ order.id }}').classList.remove('hidden')"
+                                class="bg-indigo-100 border border-indigo-200 hover:bg-indigo-200 text-indigo-700 font-bold py-2 px-3 rounded-lg transition text-xs shadow-sm ml-2">
+                                Detaylar
+                            </button>
+
+                            {% if order.status in 'PENDING,PROCESSING,WAITING_MANUAL_ACTION' %}
+                            <button type="button"
+                                onclick="if(confirm('Aman dikkat! Bu siparişi iptal etmek istediğinize emin misiniz?')) { document.getElementById('cancel-form-{{ order.id }}').submit(); }"
+                                class="bg-red-100 border border-red-300 hover:bg-red-200 text-red-800 font-bold py-2 px-3 rounded-lg transition text-xs shadow-sm ml-2">
+                                İptal Et
+                            </button>
+                            <form id="cancel-form-{{ order.id }}" method="POST" action="{% url 'cancel_order' %}"
+                                class="hidden">
+                                {% csrf_token %}
+                                <input type="hidden" name="order_id" value="{{ order.id }}">
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-5 py-16 text-center">
+                            <div class="flex flex-col items-center space-y-4">
+                                {% if system_settings.is_autonomous_active %}
+                                <div class="relative">
+                                    <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-green-500 animate-pulse" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="absolute -top-1 -right-1 flex h-3 w-3">
+                                        <span
+                                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-base font-semibold text-gray-700">Sistem Aktif — Yeni Sipariş
+                                        Bekleniyor</p>
+                                    <p class="text-sm text-gray-400 mt-1">API'den gelen siparişler otomatik olarak
+                                        burada listelenecektir.</p>
+                                    <p class="text-xs text-green-500 mt-2 font-medium">Sayfa her 15 saniyede otomatik
+                                        yenilenir</p>
+                                </div>
+                                {% else %}
+                                <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-base font-semibold text-gray-600">Sistem Durduruldu</p>
+                                    <p class="text-sm text-gray-400 mt-1">Otomatik işlemleri başlatmak için yukarıdaki
+                                        Sistem Durumu butonunu açın.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div
+            class="px-5 py-5 bg-white flex flex-col xs:flex-row items-center justify-between border-t mt-4 border-gray-200">
+            <span class="text-xs text-gray-600">
+                Sayfa {{ orders.number }} / {{ orders.paginator.num_pages }}
+            </span>
+            <div class="inline-flex mt-2 xs:mt-0">
+                {% if orders.has_previous %}
+                <a href="?page={{ orders.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                    class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-l">Önceki</a>
+                {% endif %}
+                {% if orders.has_next %}
+                <a href="?page={{ orders.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                    class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-r">Sonraki</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for order in orders %}
+
+<!-- Details Modal -->
+<div id="details-modal-{{ order.id }}" class="fixed text-left inset-0 z-50 hidden overflow-y-auto"
+    aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+            onclick="document.getElementById('details-modal-{{ order.id }}').classList.add('hidden')">
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 class="text-xl leading-6 font-bold text-gray-900" id="modal-title">İşlem Detayları</h3>
+                        <div class="mt-4 text-sm text-gray-600">
+                            <p class="mb-2"><strong>Paket İsmi:</strong> <span class="text-blue-600 font-semibold">{{
+                                    order.resolved_package_name|default:"Henüz seçilmedi veya bulunamadı" }}</span></p>
+                            <p class="mb-2"><strong>Sistem Mesajı:</strong> {{ order.log_message|default:"Yok" }}</p>
+
+                            {% if order.final_screenshot %}
+                            <div class="mt-4">
+                                <p class="font-bold text-gray-800 mb-2">Robotun Son Gördüğü Ekran:</p>
+                                <img src="{{ order.final_screenshot.url }}" alt="Son Ekran"
+                                    class="w-full h-auto border border-gray-300 rounded-lg shadow-sm">
+                            </div>
+                            {% else %}
+                            <div class="mt-4 p-4 bg-gray-100 rounded text-gray-500 text-center">
+                                Sistem işlem sırasındaki son ekran görüntüsünü kaydedemedi veya henüz işlem
+                                tamamlanmadı.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button"
+                    onclick="document.getElementById('details-modal-{{ order.id }}').classList.add('hidden')"
+                    class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if order.status == 'WAITING_MANUAL_ACTION' %}
+<!-- Tailwind Modal -->
+<div id="modal-{{ order.id }}" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title"
+    role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+            onclick="document.getElementById('modal-{{ order.id }}').classList.add('hidden')">
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+            class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <form method="POST" action="{% url 'define_package' %}">
+                {% csrf_token %}
+                <input type="hidden" name="order_id" value="{{ order.id }}">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Paket Tanımla</h3>
+                            <div class="mt-2 text-sm text-gray-500">
+                                <p>Bu küpür kodu sistemde yok. Lütfen bu kodun hangi pakete
+                                    ait olduğunu yazın:</p>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Paket
+                                    Adı (Örn: Gnctrkcll 10 GB)</label>
+                                <input type="text" name="package_name" required
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Kaydet ve Devam Et
+                    </button>
+                    <button type="button"
+                        onclick="document.getElementById('modal-{{ order.id }}').classList.add('hidden')"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        İptal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    function toggleSystem() {
+        const btn = document.getElementById('systemToggleBtn');
+        const indicator = document.getElementById('systemToggleIndicator');
+        const label = document.getElementById('systemStatusLabel');
+
+        // Optimistic UI update
+        const isCurrentlyActive = btn.classList.contains('bg-green-500');
+        const newState = !isCurrentlyActive;
+
+        if (newState) {
+            btn.classList.remove('bg-gray-300');
+            btn.classList.add('bg-green-500');
+            indicator.classList.remove('translate-x-0');
+            indicator.classList.add('translate-x-5');
+            label.textContent = 'AÇIK';
+            label.classList.remove('text-gray-500');
+            label.classList.add('text-green-600');
+        } else {
+            btn.classList.remove('bg-green-500');
+            btn.classList.add('bg-gray-300');
+            indicator.classList.remove('translate-x-5');
+            indicator.classList.add('translate-x-0');
+            label.textContent = 'KAPALI';
+            label.classList.remove('text-green-600');
+            label.classList.add('text-gray-500');
+        }
+
+        // Send API request
+        fetch("{% url 'update_system_settings' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({ is_autonomous_active: newState })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    alert("Sistem durumu güncellenemedi: " + data.message);
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Bir hata oluştu.");
+                location.reload();
+            });
+    }
+
+    function updateDefaultCard() {
+        const select = document.getElementById('defaultCardSelect');
+        const cardId = select.value;
+
+        fetch("{% url 'update_system_settings' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({ default_card_id: cardId })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    alert("Varsayılan kart güncellenemedi: " + data.message);
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Bir hata oluştu.");
+                location.reload();
+            });
+    }
+
+    // Auto-refresh every 15 seconds
+    setInterval(function () {
+        location.reload();
+    }, 15000);
+</script>
+{% endblock %}

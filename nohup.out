@@ -1,0 +1,22 @@
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+nohup: celery: No such file or directory
+Usage: celery [OPTIONS] COMMAND [ARGS]...
+Try 'celery --help' for help.
+
+Usage: celery [OPTIONS] COMMAND [ARGS]...
+Try 'celery --help' for help.
+
+Error: Invalid value for '-A' / '--app': 
+Unable to load celery application.
+Module 'worker' has no attribute 'celery'
+Error: Invalid value for '-A' / '--app': 
+Unable to load celery application.
+Module 'worker' has no attribute 'celery'
