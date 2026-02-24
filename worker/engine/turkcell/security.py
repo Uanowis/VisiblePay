@@ -282,129 +282,129 @@ class SecurityMixin:
                         return False, "Submit button not found and Enter key failed"
                     
                 logger.info("Waiting for transaction processing (polling)...")
+                
+                # Poll for result instead of blind sleep
+                poll_start = time.time()
+                poll_timeout = 60  # max 60 seconds
+                
+                while time.time() - poll_start < poll_timeout:
+                    self.take_screenshot(f"3d_secure_poll_{int(time.time()-poll_start)}")
                     
-                    # Poll for result instead of blind sleep
-                    poll_start = time.time()
-                    poll_timeout = 60  # max 60 seconds
+                    # Check 1 & 2: iframe/wrapper gone = bank processed, back to main page
+                    iframe_still = self.page.query_selector(iframe_selector)
+                    wrapper = self.page.query_selector(
+                        self.Maps.get("iframe_wrapper", '.Iframe_iframe-wrapper--open__tLv_K')
+                    )
                     
-                    while time.time() - poll_start < poll_timeout:
-                        self.take_screenshot(f"3d_secure_poll_{int(time.time()-poll_start)}")
+                    if not iframe_still and not wrapper:
+                        logger.info("3D Secure iframe/wrapper closed. Verifying transaction result on main page...")
                         
-                        # Check 1 & 2: iframe/wrapper gone = bank processed, back to main page
-                        iframe_still = self.page.query_selector(iframe_selector)
-                        wrapper = self.page.query_selector(
-                            self.Maps.get("iframe_wrapper", '.Iframe_iframe-wrapper--open__tLv_K')
-                        )
+                        # Wait for page update/redirect
+                        time.sleep(3) 
+                        self.take_screenshot("post_3d_secure_check")
                         
-                        if not iframe_still and not wrapper:
-                            logger.info("3D Secure iframe/wrapper closed. Verifying transaction result on main page...")
-                            
-                            # Wait for page update/redirect
-                            time.sleep(3) 
-                            self.take_screenshot("post_3d_secure_check")
-                            
-                            # Check for Success Indicators
-                            # "Siparişiniz Alındı", "Teşekkürler", "İşleminiz başarıyla", "Paket yükleme talebiniz alınmıştır"
-                            page_content = self.page.content()
-                            
-                            success_keywords = [
-                                "Siparişiniz Alındı",
-                                "Teşekkürler",
-                                "başarıyla",
-                                "Paket yükleme talebiniz alınmıştır",  # From user screenshot
-                                "bilgilendirme yapılacaktır"
-                            ]
-                            
-                            if any(kw in page_content for kw in success_keywords):
-                                logger.info("Transaction Verified: SUCCESS")
-                                return True, "3D Secure completed and verified success (Success message found)."
-                                
-                            # Check for Error Indicators
-                            # "Hata", "Başarısız", "Reddedildi"
-                            # Also check for specific error elements if known
-                            if "Hata" in page_content or "Başarısız" in page_content or "Reddedildi" in page_content:
-                                logger.error("Transaction Verified: FAILED (Error detected on page)")
-                                self.take_screenshot("post_3d_secure_failed")
-                                return False, "3D Secure closed but error detected on page."
-                                
-                            # Ambiguous Case
-                            # If we are back on the payment form (e.g. "Kart Numarası" input is visible), it failed silent/softly
-                            if self.page.is_visible('input[name="cardNumber"]'):
-                                logger.warning("Transaction Verified: FAILED (Returned to payment form)")
-                                return False, "Returned to payment form without success message."
-                                
-                            # Final Default: Assume failure if no positive confirmation
-                            logger.warning("Transaction Verified: AMBIGUOUS (No success/error message found). Assuming Failure.")
-                            return False, "Ambiguous result after 3D Secure."
+                        # Check for Success Indicators
+                        # "Siparişiniz Alındı", "Teşekkürler", "İşleminiz başarıyla", "Paket yükleme talebiniz alınmıştır"
+                        page_content = self.page.content()
                         
-                        # Check 3: Try reading iframe content for result keywords
-                        try:
-                            current_frame = iframe_still.content_frame()
-                            if current_frame:
-                                body_text = current_frame.inner_text('body', timeout=3000)
-                                if any(kw in body_text for kw in ["Başarılı", "Successful", "Onaylandı", "Approved"]):
-                                    logger.info(f"3D Secure SUCCESS detected: {body_text[:100]}")
-                                    return True, body_text[:200]
-                                
-                                # Check for Insufficient Limit specifically to fail fast
-                                if "limit" in body_text.lower() and ("yetersiz" in body_text.lower() or "yeterli değil" in body_text.lower()):
-                                     logger.error(f"3D Secure FAILURE: Insufficient Limit detected inside iframe.")
-                                     if log_callback:
-                                         log_callback("3DS_ERROR_LIMIT")
-                                     return False, "Yetersiz Bakiye/Limit Hatası"
+                        success_keywords = [
+                            "Siparişiniz Alındı",
+                            "Teşekkürler",
+                            "başarıyla",
+                            "Paket yükleme talebiniz alınmıştır",  # From user screenshot
+                            "bilgilendirme yapılacaktır"
+                        ]
+                        
+                        if any(kw in page_content for kw in success_keywords):
+                            logger.info("Transaction Verified: SUCCESS")
+                            return True, "3D Secure completed and verified success (Success message found)."
+                            
+                        # Check for Error Indicators
+                        # "Hata", "Başarısız", "Reddedildi"
+                        # Also check for specific error elements if known
+                        if "Hata" in page_content or "Başarısız" in page_content or "Reddedildi" in page_content:
+                            logger.error("Transaction Verified: FAILED (Error detected on page)")
+                            self.take_screenshot("post_3d_secure_failed")
+                            return False, "3D Secure closed but error detected on page."
+                            
+                        # Ambiguous Case
+                        # If we are back on the payment form (e.g. "Kart Numarası" input is visible), it failed silent/softly
+                        if self.page.is_visible('input[name="cardNumber"]'):
+                            logger.warning("Transaction Verified: FAILED (Returned to payment form)")
+                            return False, "Returned to payment form without success message."
+                            
+                        # Final Default: Assume failure if no positive confirmation
+                        logger.warning("Transaction Verified: AMBIGUOUS (No success/error message found). Assuming Failure.")
+                        return False, "Ambiguous result after 3D Secure."
+                    
+                    # Check 3: Try reading iframe content for result keywords
+                    try:
+                        current_frame = iframe_still.content_frame()
+                        if current_frame:
+                            body_text = current_frame.inner_text('body', timeout=3000)
+                            if any(kw in body_text for kw in ["Başarılı", "Successful", "Onaylandı", "Approved"]):
+                                logger.info(f"3D Secure SUCCESS detected: {body_text[:100]}")
+                                return True, body_text[:200]
+                            
+                            # Check for Insufficient Limit specifically to fail fast
+                            if "limit" in body_text.lower() and ("yetersiz" in body_text.lower() or "yeterli değil" in body_text.lower()):
+                                 logger.error(f"3D Secure FAILURE: Insufficient Limit detected inside iframe.")
+                                 if log_callback:
+                                     log_callback("3DS_ERROR_LIMIT")
+                                 return False, "Yetersiz Bakiye/Limit Hatası"
 
-                                if any(kw in body_text for kw in ["Başarısız", "Failed", "Reddedildi", "Declined", "Hata"]):
-                                    logger.error(f"3D Secure FAILURE detected: {body_text[:100]}")
-                                    return False, body_text[:200]
-                        except Exception:
-                            logger.info("Frame content not accessible, continuing poll...")
-                        
-                        # Check for Error Modal on Main Page (outside iframe)
-                        # User provided HTML: .ant-modal .ErrorModal_error-modal__description__7pBeI
-                        try:
-                            error_modal = self.page.query_selector('.ant-modal-body')
-                            if error_modal and error_modal.is_visible():
-                                modal_text = error_modal.inner_text().strip()
-                                logger.error(f"3D Secure FAILURE: Error Modal detected: {modal_text}")
-                                self.take_screenshot("error_modal_detected")
-                                
-                                # Specific Check for Limit
-                                if "limit" in modal_text.lower() and ("yetersiz" in modal_text.lower() or "yeterli değil" in modal_text.lower()):
-                                    if log_callback:
-                                        log_callback("3DS_ERROR_LIMIT")
-                                    return False, "Yetersiz Bakiye/Limit Hatası"
-                                
-                                # General Error - Return the text found in modal
-                                 # General Error - Return the text found in modal
+                            if any(kw in body_text for kw in ["Başarısız", "Failed", "Reddedildi", "Declined", "Hata"]):
+                                logger.error(f"3D Secure FAILURE detected: {body_text[:100]}")
+                                return False, body_text[:200]
+                    except Exception:
+                        logger.info("Frame content not accessible, continuing poll...")
+                    
+                    # Check for Error Modal on Main Page (outside iframe)
+                    # User provided HTML: .ant-modal .ErrorModal_error-modal__description__7pBeI
+                    try:
+                        error_modal = self.page.query_selector('.ant-modal-body')
+                        if error_modal and error_modal.is_visible():
+                            modal_text = error_modal.inner_text().strip()
+                            logger.error(f"3D Secure FAILURE: Error Modal detected: {modal_text}")
+                            self.take_screenshot("error_modal_detected")
+                            
+                            # Specific Check for Limit
+                            if "limit" in modal_text.lower() and ("yetersiz" in modal_text.lower() or "yeterli değil" in modal_text.lower()):
                                 if log_callback:
-                                    log_callback(f"3DS_ERROR_MODAL: {modal_text[:50]}")
-                                return False, f"İşlem Hatası: {modal_text}"
+                                    log_callback("3DS_ERROR_LIMIT")
+                                return False, "Yetersiz Bakiye/Limit Hatası"
+                            
+                            # General Error - Return the text found in modal
+                             # General Error - Return the text found in modal
+                            if log_callback:
+                                log_callback(f"3DS_ERROR_MODAL: {modal_text[:50]}")
+                            return False, f"İşlem Hatası: {modal_text}"
 
-                        except Exception:
-                            pass
+                    except Exception:
+                        pass
 
-                        # Check Main Page for "İşlem Başarısız" even if iframe is present
-                        # (Sometimes the error is on the main page background or overlay)
-                        try:
-                            main_page_content = self.page.content()
-                            if "İşlem Başarısız" in main_page_content or "Transaction Failed" in main_page_content:
-                                logger.error("3D Secure FAILURE: 'İşlem Başarısız' text found on main page.")
-                                if log_callback:
-                                    log_callback("3DS_ERROR_GENERIC") # Or specific if we can parse it
-                                return False, "İşlem Başarısız (Main Page)"
-                        except Exception:
-                            pass
-                        
-                        time.sleep(3)
+                    # Check Main Page for "İşlem Başarısız" even if iframe is present
+                    # (Sometimes the error is on the main page background or overlay)
+                    try:
+                        main_page_content = self.page.content()
+                        if "İşlem Başarısız" in main_page_content or "Transaction Failed" in main_page_content:
+                            logger.error("3D Secure FAILURE: 'İşlem Başarısız' text found on main page.")
+                            if log_callback:
+                                log_callback("3DS_ERROR_GENERIC") # Or specific if we can parse it
+                            return False, "İşlem Başarısız (Main Page)"
+                    except Exception:
+                        pass
                     
-                    # Final fallback after timeout
-                    self.take_screenshot("3d_secure_poll_timeout")
-                    
-                    # Last check: is iframe still there?
-                    if not self.page.query_selector(iframe_selector):
-                        return True, "3D Secure completed (iframe gone after poll timeout)"
-                    
-                    return False, "Timeout: 3D Secure did not complete within poll window"
+                    time.sleep(3)
+                
+                # Final fallback after timeout
+                self.take_screenshot("3d_secure_poll_timeout")
+                
+                # Last check: is iframe still there?
+                if not self.page.query_selector(iframe_selector):
+                    return True, "3D Secure completed (iframe gone after poll timeout)"
+                
+                return False, "Timeout: 3D Secure did not complete within poll window"
                 # Removed defunct else block since Enter fallback handles missing buttons
             else:
                 return False, "Input field for code not found"
