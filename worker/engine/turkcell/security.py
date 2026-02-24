@@ -271,8 +271,17 @@ class SecurityMixin:
                         frame.evaluate("arguments[0].click();", submit_btn)
                     
                     logger.info("Clicked Submit/Continue.")
+                else:
+                    logger.warning("No submit button found by selectors. Attempting to press 'Enter' on the input field itself...")
+                    try:
+                        input_el.press("Enter")
+                        logger.info("Pressed 'Enter' on SMS input field.")
+                    except Exception as e:
+                        logger.error(f"Failed to press 'Enter' on input field: {e}")
+                        self.take_screenshot("3d_secure_no_submit_btn")
+                        return False, "Submit button not found and Enter key failed"
                     
-                    logger.info("Waiting for transaction processing (polling)...")
+                logger.info("Waiting for transaction processing (polling)...")
                     
                     # Poll for result instead of blind sleep
                     poll_start = time.time()
@@ -396,10 +405,7 @@ class SecurityMixin:
                         return True, "3D Secure completed (iframe gone after poll timeout)"
                     
                     return False, "Timeout: 3D Secure did not complete within poll window"
-                else:
-                    logger.error("Submit button not found or not visible!")
-                    self.take_screenshot("3d_secure_no_submit_btn")
-                    return False, "Submit button not found"
+                # Removed defunct else block since Enter fallback handles missing buttons
             else:
                 return False, "Input field for code not found"
         except Exception as e:
