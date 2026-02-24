@@ -125,8 +125,9 @@
                                 }
                             </script>
                             {% if order.resolved_package_name %}
-                            <div class="text-xs text-blue-600 font-normal mt-1" title="Gerçek Paket Adı">{{
-                                order.resolved_package_name }}</div>
+                            <div class="text-xs text-blue-600 font-normal mt-1" title="Gerçek Paket Adı">
+                                <span>{{ order.resolved_package_name }}</span>
+                            </div>
                             {% endif %}
                         </td>
                         <td class="px-5 py-4 text-sm">
@@ -244,8 +245,12 @@
                     <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                         <h3 class="text-xl leading-6 font-bold text-gray-900" id="modal-title">İşlem Detayları</h3>
                         <div class="mt-4 text-sm text-gray-600">
-                            <p class="mb-2"><strong>Paket İsmi:</strong> <span class="text-blue-600 font-semibold">{{
-                                    order.resolved_package_name|default:"Henüz seçilmedi veya bulunamadı" }}</span></p>
+                            <div class="mb-2">
+                                <strong>Paket İsmi:</strong>
+                                <span class="text-blue-600 font-semibold">
+                                    {{ order.resolved_package_name|default:"Henüz Bulunamadı" }}
+                                </span>
+                            </div>
                             <p class="mb-2"><strong>Sistem Mesajı:</strong> {{ order.log_message|default:"Yok" }}</p>
 
                             {% if order.final_screenshot %}
