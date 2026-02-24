@@ -206,7 +206,13 @@ def process_autonomous_order(order_id):
             operator.fill_phone(order.phone_number)
             
             # Step 3: Captcha
-            if not operator.solve_captcha():
+            def captcha_callback(msg):
+                if msg == "CAPTCHA_PHASE_2":
+                    logger.info(f"Order {order_id}: Moving to Captcha Phase 2 (2. defa deneniyor)")
+                    order.log_message = "2. defa captcha deneniyor"
+                    order.save()
+                    
+            if not operator.solve_captcha(log_callback=captcha_callback):
                 logger.error(f"Captcha failed for order {order_id}")
                 order.status = Order.Status.FAILED
                 order.log_message = "Captcha Failed"

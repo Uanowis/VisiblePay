@@ -11,12 +11,17 @@ logger = logging.getLogger(__name__)
 class SecurityMixin:
     """Mixin for security-related logic (Captcha, 3D Secure, SMS)."""
 
-    def solve_captcha(self) -> bool:
+    def solve_captcha(self, log_callback=None) -> bool:
         logger.info("Function: solve_captcha")
         self.take_screenshot("before_captcha_check")
         try:
-            max_retries = 3
+            max_retries = 6
             for attempt in range(max_retries):
+                if attempt == 3:
+                     logger.info("Phase 2 reached: 3 failed attempts, starting next 3...")
+                     if log_callback:
+                         log_callback("CAPTCHA_PHASE_2")
+                         
                 logger.info(f"Captcha attempt {attempt + 1}/{max_retries}")
                 
                 # Check if captcha exists (Wait for it to appear)
