@@ -186,4 +186,5 @@ CELERY_BEAT_SCHEDULE = {
 
 # Media files (Generated screenshots and dynamic uploads)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR.parent, 'media')
+

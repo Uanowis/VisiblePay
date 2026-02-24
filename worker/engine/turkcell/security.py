@@ -96,8 +96,12 @@ class SecurityMixin:
                 # Check result
                 try:
                     # Wait a bit for processing (User said packages come later)
-                    logger.info("Waiting 15s for page transition...")
-                    self.page.wait_for_timeout(10000)
+                    logger.info("Waiting up to 15s for page transition (Captcha input hidden)...")
+                    try:
+                        self.page.wait_for_selector(self.Maps["captcha_input"], state="hidden", timeout=15000)
+                    except Exception:
+                        logger.warning("Captcha input not hidden within 15s, continuing checks.")
+                        self.page.wait_for_timeout(2000)
                     
                     # Success check: Next step visible
                     if self.page.is_visible(self.Maps["tab_ek_paketler"]):

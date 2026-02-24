@@ -71,6 +71,14 @@ class NavigatorMixin:
                      self.page.click('text="TL Yükle"', timeout=2000)
                  except:
                      pass
+             elif upload_type == "Package":
+                 try:
+                     self.page.click('text="Paket Yükle"', timeout=2000)
+                 except:
+                     try:
+                         self.page.click('text="Paketler"', timeout=2000)
+                     except:
+                         pass
 
     def fill_phone(self, phone_number: str):
         logger.info(f"Filling phone number: {phone_number}")
