@@ -119,6 +119,10 @@ def process_autonomous_order(order_id):
             order.save()
             MatikAPIService.send_callback(order.external_ref, 2)
             return
+            
+        # Bind card to order for usage statistics ("Günlük Kullanım")
+        order.selected_card = card
+        order.save()
 
         # Check limit
         if not card.can_be_used:
@@ -311,13 +315,16 @@ def process_autonomous_order(order_id):
             # Capture final screenshot before closing
             import os
             try:
-                final_screenshot_path = f"debug_output/order_{order.id}_final.png"
-                operator.take_screenshot(f"order_{order.id}_final")
+                final_screenshot_name = f"order_{order.id}_final"
+                operator.take_screenshot(final_screenshot_name)
+                final_screenshot_path = f"{final_screenshot_name}.png"
                 
                 if os.path.exists(final_screenshot_path):
                     from django.core.files import File
                     with open(final_screenshot_path, "rb") as f:
                         order.final_screenshot.save(f"{order.id}_final.png", File(f), save=True)
+                    # Clean up the local file after saving to Django's media storage
+                    os.remove(final_screenshot_path)
             except Exception as ss_err:
                 logger.error(f"Failed to capture final screenshot: {ss_err}")
                 
