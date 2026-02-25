@@ -323,7 +323,7 @@ def process_autonomous_order(order_id):
             try:
                 final_screenshot_name = f"order_{order.id}_final"
                 operator.take_screenshot(final_screenshot_name)
-                final_screenshot_path = f"{final_screenshot_name}.png"
+                final_screenshot_path = f"debug_output/{final_screenshot_name}.png"
                 
                 if os.path.exists(final_screenshot_path):
                     from django.core.files import File
