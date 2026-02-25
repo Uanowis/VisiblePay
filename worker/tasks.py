@@ -244,8 +244,8 @@ def process_autonomous_order(order_id):
             if not selection_success:
                 logger.error(f"Package selection failed for code {api_kontor}")
                 
-                if fallback_name and not matched_package_id:
-                    # It was an unknown package and we couldn't even fuzzy match it
+                if current_transaction_type == "Package":
+                    # Any package failure should wait for manual action (either unknown code or couldn't click)
                     order.status = Order.Status.WAITING_MANUAL_ACTION
                     order.log_message = f"Küpür bulunamadı veya eşleşmedi: {api_kontor}"
                     order.save()
@@ -255,12 +255,12 @@ def process_autonomous_order(order_id):
                     Package.objects.get_or_create(
                         operator=turkcell,
                         code=api_kontor,
-                        defaults={'name': f'Bilinmeyen Paket ({api_kontor})', 'package_id': 'UNDEFINED'}
+                        defaults={'name': f'Eşleşmeyen/Bilinmeyen Paket ({api_kontor})', 'package_id': 'UNDEFINED'}
                     )
                 else:
-                    # It was a known package but we couldn't find it on the page
+                    # TL loads fail outright because they don't have predefined buttons/names to map
                     order.status = Order.Status.FAILED
-                    order.log_message = f"Could not match/select package with code: {api_kontor}"
+                    order.log_message = f"Could not match/select TL amount: {api_kontor}"
                     order.save()
                     MatikAPIService.send_callback(order.external_ref, 2) 
                     
