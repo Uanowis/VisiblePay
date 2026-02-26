@@ -124,14 +124,9 @@ def process_autonomous_order(order_id):
         order.selected_card = card
         order.save()
 
-        # Check limit
-        if not card.can_be_used:
-            logger.error(f"Default credit card {card.id} limit reached for order {order_id}")
-            order.status = Order.Status.FAILED
-            order.log_message = f"Varsayılan kartın günlük limiti ({card.usage_count_24h}/6) dolmuştur."
-            order.save()
-            MatikAPIService.send_callback(order.external_ref, 2)
-            return
+        # Check limit (Removed the strict validation lock)
+        # Usage will still be tracked for display on the front-end, but we will no longer
+        # block the transaction and fail the order if usage == 6.
 
         import json
         try:

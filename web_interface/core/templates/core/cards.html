@@ -105,18 +105,14 @@
 
                         <!-- Limit Display -->
                         <div class="mb-4">
-                            <div
-                                class="flex justify-between items-center text-xs font-bold mb-1 {% if not card.can_be_used %}text-red-500{% else %}text-gray-500{% endif %}">
+                            <div class="flex justify-between items-center text-xs font-bold mb-1 text-gray-500">
                                 <span>Günlük Kullanım (24s)</span>
                                 <span>{{ card.usage_count_24h }} / 6</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                <div class="{% if not card.can_be_used %}bg-red-500{% else %}bg-blue-500{% endif %} h-1.5 rounded-full"
+                                <div class="bg-blue-500 h-1.5 rounded-full"
                                     style="width: {% widthratio card.usage_count_24h 6 100 %}%"></div>
                             </div>
-                            {% if not card.can_be_used %}
-                            <p class="text-xs text-red-500 font-bold mt-1">Bu kartın 24 saatlik limiti dolmuştur.</p>
-                            {% endif %}
                         </div>
 
                         <!-- Balance Display -->
