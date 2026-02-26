@@ -10,7 +10,7 @@ RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 # Copy project
 COPY . /app/
 
-# Add a step to collect static files (assuming SQLite or temporary DB works for collecting static files)
+# Add a step to collect static files (assuming SQLite or temporary DB works for collecting static files)asdasdasdasdasdsad
 RUN python web_interface/manage.py collectstatic --noinput
 
 # Expose port (for Django)
