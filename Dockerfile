@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/playwright/python:v1.41.0-jammy
 # Set work directory
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies bu bir ekleme
 COPY requirements.txt /app/
 RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
